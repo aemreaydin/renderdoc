@@ -812,6 +812,11 @@ void Processor::RegisterOp(Iter it)
     OpTypePointer decoded(it);
     dataTypes[opdata.result] = DataType(opdata.result, Pointer(decoded.type, decoded.storageClass));
   }
+  else if(opdata.op == Op::TypeUntypedPointerKHR)
+  {
+    // untyped pointers have no pointee type, each access names its own
+    dataTypes[opdata.result] = DataType(opdata.result, DataType::UnknownType);
+  }
   else if(opdata.op == Op::TypeArray)
   {
     OpTypeArray decoded(it);
@@ -990,7 +995,8 @@ void Processor::UnregisterOp(Iter it)
           opdata.op == Op::TypeFloat || opdata.op == Op::TypeVector ||
           opdata.op == Op::TypeMatrix || opdata.op == Op::TypeStruct || opdata.op == Op::TypeArray ||
           opdata.op == Op::TypePointer || opdata.op == Op::TypeRuntimeArray ||
-          opdata.op == Op::TypeRayQueryKHR || opdata.op == Op::TypeAccelerationStructureKHR)
+          opdata.op == Op::TypeRayQueryKHR || opdata.op == Op::TypeAccelerationStructureKHR ||
+          opdata.op == Op::TypeUntypedPointerKHR)
   {
     dataTypes[opdata.result] = DataType();
   }

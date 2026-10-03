@@ -1568,3 +1568,80 @@ void WrappedVulkan::vkGetQueueCheckpointData2NV(VkQueue queue, uint32_t *pCheckp
   return ObjDisp(queue)->GetQueueCheckpointData2NV(Unwrap(queue), pCheckpointDataCount,
                                                    pCheckpointData);
 }
+
+VkResult WrappedVulkan::vkWriteSamplerDescriptorsEXT(VkDevice device, uint32_t samplerCount,
+                                                     const VkSamplerCreateInfo *pSamplers,
+                                                     const VkHostAddressRangeEXT *pDescriptors)
+{
+  return ObjDisp(device)->WriteSamplerDescriptorsEXT(Unwrap(device), samplerCount, pSamplers,
+                                                     pDescriptors);
+}
+
+VkResult WrappedVulkan::vkWriteResourceDescriptorsEXT(VkDevice device, uint32_t resourceCount,
+                                                      const VkResourceDescriptorInfoEXT *pResources,
+                                                      const VkHostAddressRangeEXT *pDescriptors)
+{
+  rdcarray<VkResourceDescriptorInfoEXT> resources(pResources, resourceCount);
+  rdcarray<VkImageDescriptorInfoEXT> images;
+  rdcarray<VkImageViewCreateInfo> views;
+  images.resize(resourceCount);
+  views.resize(resourceCount);
+
+  for(uint32_t i = 0; i < resourceCount; i++)
+  {
+    switch(resources[i].type)
+    {
+      case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+      case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+      case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+      case VK_DESCRIPTOR_TYPE_BLOCK_MATCH_IMAGE_QCOM:
+      case VK_DESCRIPTOR_TYPE_SAMPLE_WEIGHT_IMAGE_QCOM:
+        // a NULL image is a null descriptor
+        if(resources[i].data.pImage)
+        {
+          images[i] = *resources[i].data.pImage;
+          views[i] = *images[i].pView;
+          views[i].image = Unwrap(views[i].image);
+          images[i].pView = &views[i];
+          resources[i].data.pImage = &images[i];
+        }
+        break;
+      default: break;
+    }
+  }
+
+  return ObjDisp(device)->WriteResourceDescriptorsEXT(Unwrap(device), resourceCount,
+                                                      resources.data(), pDescriptors);
+}
+
+VkResult WrappedVulkan::vkGetImageOpaqueCaptureDataEXT(VkDevice device, uint32_t imageCount,
+                                                       const VkImage *pImages,
+                                                       VkHostAddressRangeEXT *pDatas)
+{
+  rdcarray<VkImage> images;
+  for(uint32_t i = 0; i < imageCount; i++)
+    images.push_back(Unwrap(pImages[i]));
+
+  return ObjDisp(device)->GetImageOpaqueCaptureDataEXT(Unwrap(device), imageCount, images.data(),
+                                                       pDatas);
+}
+
+VkDeviceSize WrappedVulkan::vkGetPhysicalDeviceDescriptorSizeEXT(VkPhysicalDevice physicalDevice,
+                                                                 VkDescriptorType descriptorType)
+{
+  return ObjDisp(physicalDevice)
+      ->GetPhysicalDeviceDescriptorSizeEXT(Unwrap(physicalDevice), descriptorType);
+}
+
+VkResult WrappedVulkan::vkRegisterCustomBorderColorEXT(
+    VkDevice device, const VkSamplerCustomBorderColorCreateInfoEXT *pBorderColor,
+    VkBool32 requestIndex, uint32_t *pIndex)
+{
+  return ObjDisp(device)->RegisterCustomBorderColorEXT(Unwrap(device), pBorderColor, requestIndex,
+                                                       pIndex);
+}
+
+void WrappedVulkan::vkUnregisterCustomBorderColorEXT(VkDevice device, uint32_t index)
+{
+  return ObjDisp(device)->UnregisterCustomBorderColorEXT(Unwrap(device), index);
+}

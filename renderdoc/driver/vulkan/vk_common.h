@@ -1495,6 +1495,9 @@ enum class VulkanChunk : uint32_t
   vkCmdBeginCustomResolveEXT,
   vkCmdSetCheckpointNV,
   vkCmdSetDepthBias2EXT,
+  vkCmdBindSamplerHeapEXT,
+  vkCmdBindResourceHeapEXT,
+  vkCmdPushDataEXT,
   Max,
 };
 
@@ -1568,6 +1571,7 @@ DECLARE_REFLECTION_STRUCT(VkBindBufferMemoryDeviceGroupInfo);
 DECLARE_REFLECTION_STRUCT(VkBindBufferMemoryInfo);
 DECLARE_REFLECTION_STRUCT(VkBindDescriptorBufferEmbeddedSamplersInfoEXT)
 DECLARE_REFLECTION_STRUCT(VkBindDescriptorSetsInfo)
+DECLARE_REFLECTION_STRUCT(VkBindHeapInfoEXT);
 DECLARE_REFLECTION_STRUCT(VkBindImageMemoryDeviceGroupInfo);
 DECLARE_REFLECTION_STRUCT(VkBindImageMemoryInfo);
 DECLARE_REFLECTION_STRUCT(VkBindImageMemorySwapchainInfoKHR);
@@ -1754,6 +1758,7 @@ DECLARE_REFLECTION_STRUCT(VkMemoryUnmapInfo);
 DECLARE_REFLECTION_STRUCT(VkMultisampledRenderToSingleSampledInfoEXT);
 DECLARE_REFLECTION_STRUCT(VkMultisamplePropertiesEXT);
 DECLARE_REFLECTION_STRUCT(VkMutableDescriptorTypeCreateInfoEXT);
+DECLARE_REFLECTION_STRUCT(VkOpaqueCaptureDataCreateInfoEXT);
 DECLARE_REFLECTION_STRUCT(VkOpaqueCaptureDescriptorDataCreateInfoEXT);
 DECLARE_REFLECTION_STRUCT(VkPastPresentationTimingEXT);
 DECLARE_REFLECTION_STRUCT(VkPastPresentationTimingInfoEXT);
@@ -1790,6 +1795,7 @@ DECLARE_REFLECTION_STRUCT(VkPhysicalDeviceDepthStencilResolveProperties);
 DECLARE_REFLECTION_STRUCT(VkPhysicalDeviceDescriptorBufferDensityMapPropertiesEXT);
 DECLARE_REFLECTION_STRUCT(VkPhysicalDeviceDescriptorBufferFeaturesEXT);
 DECLARE_REFLECTION_STRUCT(VkPhysicalDeviceDescriptorBufferPropertiesEXT);
+DECLARE_REFLECTION_STRUCT(VkPhysicalDeviceDescriptorHeapFeaturesEXT);
 DECLARE_REFLECTION_STRUCT(VkPhysicalDeviceDescriptorIndexingFeatures)
 DECLARE_REFLECTION_STRUCT(VkPhysicalDeviceDescriptorIndexingProperties)
 DECLARE_REFLECTION_STRUCT(VkPhysicalDeviceDiagnosticsConfigFeaturesNV);
@@ -1950,6 +1956,7 @@ DECLARE_REFLECTION_STRUCT(VkPhysicalDeviceShaderSubgroupPartitionedFeaturesEXT);
 DECLARE_REFLECTION_STRUCT(VkPhysicalDeviceShaderSubgroupRotateFeatures);
 DECLARE_REFLECTION_STRUCT(VkPhysicalDeviceShaderSubgroupUniformControlFlowFeaturesKHR);
 DECLARE_REFLECTION_STRUCT(VkPhysicalDeviceShaderTerminateInvocationFeatures);
+DECLARE_REFLECTION_STRUCT(VkPhysicalDeviceShaderUntypedPointersFeaturesKHR);
 DECLARE_REFLECTION_STRUCT(VkPhysicalDeviceShaderTileImageFeaturesEXT);
 DECLARE_REFLECTION_STRUCT(VkPhysicalDeviceShaderTileImagePropertiesEXT);
 DECLARE_REFLECTION_STRUCT(VkPhysicalDeviceSparseImageFormatInfo2);
@@ -2039,6 +2046,7 @@ DECLARE_REFLECTION_STRUCT(VkPresentWait2InfoKHR);
 DECLARE_REFLECTION_STRUCT(VkPrivateDataSlotCreateInfo);
 DECLARE_REFLECTION_STRUCT(VkProtectedSubmitInfo);
 DECLARE_REFLECTION_STRUCT(VkPushConstantsInfo)
+DECLARE_REFLECTION_STRUCT(VkPushDataInfoEXT);
 DECLARE_REFLECTION_STRUCT(VkPushDescriptorSetInfo)
 DECLARE_REFLECTION_STRUCT(VkPushDescriptorSetWithTemplateInfo)
 DECLARE_REFLECTION_STRUCT(VkQueryPoolCreateInfo);
@@ -2159,6 +2167,7 @@ DECLARE_DESERIALISE_TYPE(VkBindBufferMemoryDeviceGroupInfo);
 DECLARE_DESERIALISE_TYPE(VkBindBufferMemoryInfo);
 DECLARE_DESERIALISE_TYPE(VkBindDescriptorBufferEmbeddedSamplersInfoEXT)
 DECLARE_DESERIALISE_TYPE(VkBindDescriptorSetsInfo)
+DECLARE_DESERIALISE_TYPE(VkBindHeapInfoEXT);
 DECLARE_DESERIALISE_TYPE(VkBindImageMemoryDeviceGroupInfo);
 DECLARE_DESERIALISE_TYPE(VkBindImageMemoryInfo);
 DECLARE_DESERIALISE_TYPE(VkBindImageMemorySwapchainInfoKHR);
@@ -2341,6 +2350,7 @@ DECLARE_DESERIALISE_TYPE(VkMemoryUnmapInfo);
 DECLARE_DESERIALISE_TYPE(VkMultisampledRenderToSingleSampledInfoEXT);
 DECLARE_DESERIALISE_TYPE(VkMultisamplePropertiesEXT);
 DECLARE_DESERIALISE_TYPE(VkMutableDescriptorTypeCreateInfoEXT);
+DECLARE_DESERIALISE_TYPE(VkOpaqueCaptureDataCreateInfoEXT);
 DECLARE_DESERIALISE_TYPE(VkOpaqueCaptureDescriptorDataCreateInfoEXT);
 DECLARE_DESERIALISE_TYPE(VkPastPresentationTimingEXT);
 DECLARE_DESERIALISE_TYPE(VkPastPresentationTimingInfoEXT);
@@ -2374,6 +2384,7 @@ DECLARE_DESERIALISE_TYPE(VkPhysicalDeviceDepthStencilResolveProperties);
 DECLARE_DESERIALISE_TYPE(VkPhysicalDeviceDescriptorBufferDensityMapPropertiesEXT);
 DECLARE_DESERIALISE_TYPE(VkPhysicalDeviceDescriptorBufferFeaturesEXT);
 DECLARE_DESERIALISE_TYPE(VkPhysicalDeviceDescriptorBufferPropertiesEXT);
+DECLARE_DESERIALISE_TYPE(VkPhysicalDeviceDescriptorHeapFeaturesEXT);
 DECLARE_DESERIALISE_TYPE(VkPhysicalDeviceDescriptorIndexingFeatures)
 DECLARE_DESERIALISE_TYPE(VkPhysicalDeviceDescriptorIndexingProperties)
 DECLARE_DESERIALISE_TYPE(VkPhysicalDeviceDiagnosticsConfigFeaturesNV);
@@ -2534,6 +2545,7 @@ DECLARE_DESERIALISE_TYPE(VkPhysicalDeviceShaderSubgroupPartitionedFeaturesEXT);
 DECLARE_DESERIALISE_TYPE(VkPhysicalDeviceShaderSubgroupRotateFeatures);
 DECLARE_DESERIALISE_TYPE(VkPhysicalDeviceShaderSubgroupUniformControlFlowFeaturesKHR);
 DECLARE_DESERIALISE_TYPE(VkPhysicalDeviceShaderTerminateInvocationFeatures);
+DECLARE_DESERIALISE_TYPE(VkPhysicalDeviceShaderUntypedPointersFeaturesKHR);
 DECLARE_DESERIALISE_TYPE(VkPhysicalDeviceShaderTileImageFeaturesEXT);
 DECLARE_DESERIALISE_TYPE(VkPhysicalDeviceShaderTileImagePropertiesEXT);
 DECLARE_DESERIALISE_TYPE(VkPhysicalDeviceSparseImageFormatInfo2);
@@ -2623,6 +2635,7 @@ DECLARE_DESERIALISE_TYPE(VkPresentWait2InfoKHR);
 DECLARE_DESERIALISE_TYPE(VkPrivateDataSlotCreateInfo);
 DECLARE_DESERIALISE_TYPE(VkProtectedSubmitInfo);
 DECLARE_DESERIALISE_TYPE(VkPushConstantsInfo)
+DECLARE_DESERIALISE_TYPE(VkPushDataInfoEXT);
 DECLARE_DESERIALISE_TYPE(VkPushDescriptorSetInfo)
 DECLARE_DESERIALISE_TYPE(VkPushDescriptorSetWithTemplateInfo)
 DECLARE_DESERIALISE_TYPE(VkQueryPoolCreateInfo);
@@ -2743,6 +2756,8 @@ DECLARE_REFLECTION_STRUCT(VkDescriptorSetLayoutBinding);
 DECLARE_REFLECTION_STRUCT(VkDescriptorUpdateTemplateEntry);
 DECLARE_REFLECTION_STRUCT(VkDeviceOrHostAddressConstKHR);
 DECLARE_REFLECTION_STRUCT(VkDeviceOrHostAddressKHR);
+DECLARE_REFLECTION_STRUCT(VkDeviceAddressRangeEXT);
+DECLARE_REFLECTION_STRUCT(VkHostAddressRangeConstEXT);
 DECLARE_REFLECTION_STRUCT(VkDispatchIndirectCommand);
 DECLARE_REFLECTION_STRUCT(VkDisplayModeParametersKHR);
 DECLARE_REFLECTION_STRUCT(VkDisplayModePropertiesKHR);
@@ -2819,6 +2834,7 @@ DECLARE_DESERIALISE_TYPE(VkSparseBufferMemoryBindInfo);
 DECLARE_DESERIALISE_TYPE(VkSparseImageMemoryBindInfo);
 DECLARE_DESERIALISE_TYPE(VkSparseImageOpaqueMemoryBindInfo);
 DECLARE_DESERIALISE_TYPE(VkSpecializationInfo);
+DECLARE_DESERIALISE_TYPE(VkHostAddressRangeConstEXT);
 DECLARE_DESERIALISE_TYPE(VkSubpassDescription);
 
 // win32 only structs

@@ -546,6 +546,8 @@ private:
   bool m_Maintenance6 = false;
   bool m_Maintenance9 = false;
   bool m_DescriptorBuffers = false;
+  bool m_DescriptorHeaps = false;
+  size_t m_ImageHeapOpaqueDataSize = 0;
   bool m_MultiviewPerViewViewports = false;
   uint32_t m_PreciseFMAMask = 0;
 
@@ -1531,6 +1533,7 @@ public:
   bool Maintenance6() const { return m_Maintenance6; }
   bool Maintenance9() const { return m_Maintenance9; }
   bool DescriptorBuffers() const { return m_DescriptorBuffers; }
+  bool DescriptorHeaps() const { return m_DescriptorHeaps; }
   bool MultiViewGeometryShaders() const { return m_MultiViewGeometryShaders; }
   bool MultiviewPerViewViewports() const { return m_MultiviewPerViewViewports; }
   uint32_t PreciseFMAMask() const { return m_PreciseFMAMask; }
@@ -3318,6 +3321,28 @@ public:
   // VK_EXT_image_drm_format_modifier
   VkResult vkGetImageDrmFormatModifierPropertiesEXT(VkDevice device, VkImage image,
                                                     VkImageDrmFormatModifierPropertiesEXT *pProperties);
+
+  // VK_EXT_descriptor_heap
+  VkResult vkWriteSamplerDescriptorsEXT(VkDevice device, uint32_t samplerCount,
+                                        const VkSamplerCreateInfo *pSamplers,
+                                        const VkHostAddressRangeEXT *pDescriptors);
+  VkResult vkWriteResourceDescriptorsEXT(VkDevice device, uint32_t resourceCount,
+                                         const VkResourceDescriptorInfoEXT *pResources,
+                                         const VkHostAddressRangeEXT *pDescriptors);
+  IMPLEMENT_FUNCTION_SERIALISED(void, vkCmdBindSamplerHeapEXT, VkCommandBuffer commandBuffer,
+                                const VkBindHeapInfoEXT *pBindInfo);
+  IMPLEMENT_FUNCTION_SERIALISED(void, vkCmdBindResourceHeapEXT, VkCommandBuffer commandBuffer,
+                                const VkBindHeapInfoEXT *pBindInfo);
+  IMPLEMENT_FUNCTION_SERIALISED(void, vkCmdPushDataEXT, VkCommandBuffer commandBuffer,
+                                const VkPushDataInfoEXT *pPushDataInfo);
+  VkResult vkGetImageOpaqueCaptureDataEXT(VkDevice device, uint32_t imageCount,
+                                          const VkImage *pImages, VkHostAddressRangeEXT *pDatas);
+  VkDeviceSize vkGetPhysicalDeviceDescriptorSizeEXT(VkPhysicalDevice physicalDevice,
+                                                    VkDescriptorType descriptorType);
+  VkResult vkRegisterCustomBorderColorEXT(VkDevice device,
+                                          const VkSamplerCustomBorderColorCreateInfoEXT *pBorderColor,
+                                          VkBool32 requestIndex, uint32_t *pIndex);
+  void vkUnregisterCustomBorderColorEXT(VkDevice device, uint32_t index);
 
   // VK_EXT_custom_resolve
   IMPLEMENT_FUNCTION_SERIALISED(void, vkCmdBeginCustomResolveEXT, VkCommandBuffer commandBuffer,

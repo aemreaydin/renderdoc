@@ -686,6 +686,12 @@ SERIALISE_VK_HANDLES();
   PNEXT_STRUCT(VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CAPTURE_DESCRIPTOR_DATA_INFO_EXT,              \
                VkAccelerationStructureCaptureDescriptorDataInfoEXT)                                    \
                                                                                                        \
+  /* VK_EXT_descriptor_heap */                                                                         \
+  PNEXT_STRUCT(VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_HEAP_FEATURES_EXT,                         \
+               VkPhysicalDeviceDescriptorHeapFeaturesEXT)                                              \
+  PNEXT_STRUCT(VK_STRUCTURE_TYPE_OPAQUE_CAPTURE_DATA_CREATE_INFO_EXT,                                  \
+               VkOpaqueCaptureDataCreateInfoEXT)                                                       \
+                                                                                                       \
   /* VK_EXT_descriptor_indexing */                                                                     \
   PNEXT_STRUCT(VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO,                      \
                VkDescriptorSetLayoutBindingFlagsCreateInfo)                                            \
@@ -1660,6 +1666,10 @@ SERIALISE_VK_HANDLES();
   PNEXT_STRUCT(VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_TERMINATE_INVOCATION_FEATURES,                 \
                VkPhysicalDeviceShaderTerminateInvocationFeatures)                                      \
                                                                                                        \
+  /* VK_KHR_shader_untyped_pointers */                                                                 \
+  PNEXT_STRUCT(VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_UNTYPED_POINTERS_FEATURES_KHR,                 \
+               VkPhysicalDeviceShaderUntypedPointersFeaturesKHR)                                       \
+                                                                                                       \
   /* VK_KHR_shared_presentable_image */                                                                \
   PNEXT_STRUCT(VK_STRUCTURE_TYPE_SHARED_PRESENT_SURFACE_CAPABILITIES_KHR,                              \
                VkSharedPresentSurfaceCapabilitiesKHR)                                                  \
@@ -1994,7 +2004,6 @@ SERIALISE_VK_HANDLES();
   PNEXT_UNSUPPORTED(VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_DESCRIPTOR_HEAP_INFO_EXT)             \
   PNEXT_UNSUPPORTED(VK_STRUCTURE_TYPE_DESCRIPTOR_SET_AND_BINDING_MAPPING_EXT)                          \
   PNEXT_UNSUPPORTED(VK_STRUCTURE_TYPE_IMAGE_DESCRIPTOR_INFO_EXT)                                       \
-  PNEXT_UNSUPPORTED(VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_HEAP_FEATURES_EXT)                    \
   PNEXT_UNSUPPORTED(VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_HEAP_PROPERTIES_EXT)                  \
   PNEXT_UNSUPPORTED(VK_STRUCTURE_TYPE_RESOURCE_DESCRIPTOR_INFO_EXT)                                    \
   PNEXT_UNSUPPORTED(VK_STRUCTURE_TYPE_SHADER_DESCRIPTOR_SET_AND_BINDING_MAPPING_INFO_EXT)              \
@@ -2003,7 +2012,6 @@ SERIALISE_VK_HANDLES();
   PNEXT_UNSUPPORTED(VK_STRUCTURE_TYPE_SUBSAMPLED_IMAGE_FORMAT_PROPERTIES_EXT)                          \
   PNEXT_UNSUPPORTED(VK_STRUCTURE_TYPE_BIND_HEAP_INFO_EXT)                                              \
   PNEXT_UNSUPPORTED(VK_STRUCTURE_TYPE_PUSH_DATA_INFO_EXT)                                              \
-  PNEXT_UNSUPPORTED(VK_STRUCTURE_TYPE_OPAQUE_CAPTURE_DATA_CREATE_INFO_EXT)                             \
   /* interactions with VK_NV_device_generated_commands */                                              \
   PNEXT_UNSUPPORTED(VK_STRUCTURE_TYPE_INDIRECT_COMMANDS_LAYOUT_PUSH_DATA_TOKEN_NV)                     \
   /* interactions with VK_ARM_tensors */                                                               \
@@ -2250,9 +2258,6 @@ SERIALISE_VK_HANDLES();
   PNEXT_UNSUPPORTED(VK_STRUCTURE_TYPE_PIPELINE_CREATE_INFO_KHR)                                        \
   PNEXT_UNSUPPORTED(VK_STRUCTURE_TYPE_DEVICE_PIPELINE_BINARY_INTERNAL_CACHE_CONTROL_KHR)               \
   PNEXT_UNSUPPORTED(VK_STRUCTURE_TYPE_PIPELINE_BINARY_HANDLES_INFO_KHR)                                \
-                                                                                                       \
-  /* VK_KHR_shader_untyped_pointers */                                                                 \
-  PNEXT_UNSUPPORTED(VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_UNTYPED_POINTERS_FEATURES_KHR)            \
                                                                                                        \
   /* VK_KHR_video_decode_av1 */                                                                        \
   PNEXT_UNSUPPORTED(VK_STRUCTURE_TYPE_VIDEO_DECODE_AV1_CAPABILITIES_KHR)                               \
@@ -10826,6 +10831,23 @@ void Deserialise(const VkPhysicalDeviceDescriptorBufferFeaturesEXT &el)
 }
 
 template <typename SerialiserType>
+void DoSerialise(SerialiserType &ser, VkPhysicalDeviceDescriptorHeapFeaturesEXT &el)
+{
+  RDCASSERT(ser.IsReading() ||
+            el.sType == VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_HEAP_FEATURES_EXT);
+  SerialiseNext(ser, el.sType, el.pNext);
+
+  SERIALISE_MEMBER(descriptorHeap);
+  SERIALISE_MEMBER(descriptorHeapCaptureReplay);
+}
+
+template <>
+void Deserialise(const VkPhysicalDeviceDescriptorHeapFeaturesEXT &el)
+{
+  DeserialiseNext(el.pNext);
+}
+
+template <typename SerialiserType>
 void DoSerialise(SerialiserType &ser, VkPhysicalDeviceDescriptorBufferDensityMapPropertiesEXT &el)
 {
   RDCASSERT(ser.IsReading() ||
@@ -11110,6 +11132,87 @@ void Deserialise(const VkOpaqueCaptureDescriptorDataCreateInfoEXT &el)
 {
   DeserialiseNext(el.pNext);
   delete[](uint64_t *)el.opaqueCaptureDescriptorData;
+}
+
+template <typename SerialiserType>
+void DoSerialise(SerialiserType &ser, VkHostAddressRangeConstEXT &el)
+{
+  // don't serialise size_t, otherwise capture/replay between different bit-ness won't work
+  {
+    uint64_t size = el.size;
+    ser.Serialise("size"_lit, size);
+    if(ser.IsReading())
+      el.size = (size_t)size;
+  }
+
+  SERIALISE_MEMBER_ARRAY(address, size).Important();
+}
+
+template <>
+void Deserialise(const VkHostAddressRangeConstEXT &el)
+{
+  FreeAlignedBuffer((byte *)el.address);
+}
+
+template <typename SerialiserType>
+void DoSerialise(SerialiserType &ser, VkDeviceAddressRangeEXT &el)
+{
+  SERIALISE_MEMBER(address);
+  SERIALISE_MEMBER(size);
+}
+
+template <typename SerialiserType>
+void DoSerialise(SerialiserType &ser, VkOpaqueCaptureDataCreateInfoEXT &el)
+{
+  RDCASSERT(ser.IsReading() || el.sType == VK_STRUCTURE_TYPE_OPAQUE_CAPTURE_DATA_CREATE_INFO_EXT);
+  SerialiseNext(ser, el.sType, el.pNext);
+
+  SERIALISE_MEMBER_OPT(pData).Important();
+}
+
+template <>
+void Deserialise(const VkOpaqueCaptureDataCreateInfoEXT &el)
+{
+  DeserialiseNext(el.pNext);
+  if(el.pData)
+  {
+    Deserialise(*el.pData);
+    delete el.pData;
+  }
+}
+
+template <typename SerialiserType>
+void DoSerialise(SerialiserType &ser, VkBindHeapInfoEXT &el)
+{
+  RDCASSERT(ser.IsReading() || el.sType == VK_STRUCTURE_TYPE_BIND_HEAP_INFO_EXT);
+  SerialiseNext(ser, el.sType, el.pNext);
+
+  SERIALISE_MEMBER(heapRange).Important();
+  SERIALISE_MEMBER(reservedRangeOffset);
+  SERIALISE_MEMBER(reservedRangeSize);
+}
+
+template <>
+void Deserialise(const VkBindHeapInfoEXT &el)
+{
+  DeserialiseNext(el.pNext);
+}
+
+template <typename SerialiserType>
+void DoSerialise(SerialiserType &ser, VkPushDataInfoEXT &el)
+{
+  RDCASSERT(ser.IsReading() || el.sType == VK_STRUCTURE_TYPE_PUSH_DATA_INFO_EXT);
+  SerialiseNext(ser, el.sType, el.pNext);
+
+  SERIALISE_MEMBER(offset).OffsetOrSize();
+  SERIALISE_MEMBER(data).Important();
+}
+
+template <>
+void Deserialise(const VkPushDataInfoEXT &el)
+{
+  DeserialiseNext(el.pNext);
+  Deserialise(el.data);
 }
 
 template <typename SerialiserType>
@@ -12016,6 +12119,22 @@ void DoSerialise(SerialiserType &ser, VkPhysicalDeviceShaderTerminateInvocationF
 
 template <>
 void Deserialise(const VkPhysicalDeviceShaderTerminateInvocationFeatures &el)
+{
+  DeserialiseNext(el.pNext);
+}
+
+template <typename SerialiserType>
+void DoSerialise(SerialiserType &ser, VkPhysicalDeviceShaderUntypedPointersFeaturesKHR &el)
+{
+  RDCASSERT(ser.IsReading() ||
+            el.sType == VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_UNTYPED_POINTERS_FEATURES_KHR);
+  SerialiseNext(ser, el.sType, el.pNext);
+
+  SERIALISE_MEMBER(shaderUntypedPointers);
+}
+
+template <>
+void Deserialise(const VkPhysicalDeviceShaderUntypedPointersFeaturesKHR &el)
 {
   DeserialiseNext(el.pNext);
 }
@@ -16028,6 +16147,11 @@ INSTANTIATE_SERIALISE_TYPE(VkMemoryUnmapInfo);
 INSTANTIATE_SERIALISE_TYPE(VkMultisampledRenderToSingleSampledInfoEXT);
 INSTANTIATE_SERIALISE_TYPE(VkMultisamplePropertiesEXT);
 INSTANTIATE_SERIALISE_TYPE(VkMutableDescriptorTypeCreateInfoEXT);
+INSTANTIATE_SERIALISE_TYPE(VkOpaqueCaptureDataCreateInfoEXT);
+INSTANTIATE_SERIALISE_TYPE(VkBindHeapInfoEXT);
+INSTANTIATE_SERIALISE_TYPE(VkPushDataInfoEXT);
+INSTANTIATE_SERIALISE_TYPE(VkHostAddressRangeConstEXT);
+INSTANTIATE_SERIALISE_TYPE(VkDeviceAddressRangeEXT);
 INSTANTIATE_SERIALISE_TYPE(VkOpaqueCaptureDescriptorDataCreateInfoEXT);
 INSTANTIATE_SERIALISE_TYPE(VkPastPresentationTimingEXT);
 INSTANTIATE_SERIALISE_TYPE(VkPastPresentationTimingGOOGLE);
@@ -16064,6 +16188,7 @@ INSTANTIATE_SERIALISE_TYPE(VkPhysicalDeviceDepthStencilResolveProperties);
 INSTANTIATE_SERIALISE_TYPE(VkPhysicalDeviceDescriptorBufferDensityMapPropertiesEXT);
 INSTANTIATE_SERIALISE_TYPE(VkPhysicalDeviceDescriptorBufferFeaturesEXT);
 INSTANTIATE_SERIALISE_TYPE(VkPhysicalDeviceDescriptorBufferPropertiesEXT);
+INSTANTIATE_SERIALISE_TYPE(VkPhysicalDeviceDescriptorHeapFeaturesEXT);
 INSTANTIATE_SERIALISE_TYPE(VkPhysicalDeviceDescriptorIndexingFeatures)
 INSTANTIATE_SERIALISE_TYPE(VkPhysicalDeviceDescriptorIndexingProperties)
 INSTANTIATE_SERIALISE_TYPE(VkPhysicalDeviceDiagnosticsConfigFeaturesNV);
@@ -16223,6 +16348,7 @@ INSTANTIATE_SERIALISE_TYPE(VkPhysicalDeviceShaderSubgroupPartitionedFeaturesEXT)
 INSTANTIATE_SERIALISE_TYPE(VkPhysicalDeviceShaderSubgroupRotateFeatures);
 INSTANTIATE_SERIALISE_TYPE(VkPhysicalDeviceShaderSubgroupUniformControlFlowFeaturesKHR);
 INSTANTIATE_SERIALISE_TYPE(VkPhysicalDeviceShaderTerminateInvocationFeatures);
+INSTANTIATE_SERIALISE_TYPE(VkPhysicalDeviceShaderUntypedPointersFeaturesKHR);
 INSTANTIATE_SERIALISE_TYPE(VkPhysicalDeviceShaderTileImageFeaturesEXT);
 INSTANTIATE_SERIALISE_TYPE(VkPhysicalDeviceShaderTileImagePropertiesEXT);
 INSTANTIATE_SERIALISE_TYPE(VkPhysicalDeviceSparseImageFormatInfo2);

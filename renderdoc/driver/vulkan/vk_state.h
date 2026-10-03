@@ -112,6 +112,7 @@ struct VulkanRenderState
   void BindPipeline(WrappedVulkan *vk, VkCommandBuffer cmd, PipelineBinding binding, bool subpass0);
 
   void BindDescriptorBuffers(WrappedVulkan *vk, VkCommandBuffer cmd);
+  void BindDescriptorHeaps(WrappedVulkan *vk, VkCommandBuffer cmd);
 
   void BindShaderObjects(WrappedVulkan *vk, VkCommandBuffer cmd, PipelineBinding binding);
   void BindDynamicState(WrappedVulkan *vk, VkCommandBuffer cmd);
@@ -181,6 +182,8 @@ struct VulkanRenderState
   // partial/temporarily invalid state like if we are resetting state after a discard pattern and
   // the command buffer has only pushed some constants but not yet bound a pipeline
   ResourceId pushLayout;
+  // set when the last push was vkCmdPushDataEXT, which has no layout
+  bool pushData = false;
 
   uint32_t subpass = 0;
   VkSubpassContents subpassContents = VK_SUBPASS_CONTENTS_INLINE;
@@ -235,6 +238,10 @@ struct VulkanRenderState
     ResourceId pushBuffer;
   };
   rdcarray<DescriptorBuffer> descBufs;
+
+  // a zero heap address means that heap is not bound
+  VkBindHeapInfoEXT samplerHeap = {};
+  VkBindHeapInfoEXT resourceHeap = {};
 
   struct IdxBuffer
   {

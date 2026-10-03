@@ -318,15 +318,16 @@ bool WrappedVulkan::Serialise_vkAllocateMemory(SerialiserType &ser, VkDevice dev
         {
           RDCDEBUG("Patching dedicated allocation for incompatible size");
 
-          // if acceleration structures or descriptor buffers are used, we promote all non-dedicated
-          // memory to be BDA as we can't know if it will be used for an AS or not during capture.
+          // if acceleration structures, descriptor buffers or descriptor heaps are used, we promote
+          // all non-dedicated memory to be BDA as we can't know if it will be used for an AS or not
+          // during capture.
           // That means that during self-capture if we just remove the dedicated allocation
           // structure here without any other changes the self-capture layer will promote it to BDA
           // and potentially cause clashes with reserved addresses elsewhere.
           //
           // instead we do the more dangerous thing of adjusting the allocation size to match the
           // image's memory requirements and keep the dedicated allocation.
-          if(AccelerationStructures() || DescriptorBuffers())
+          if(AccelerationStructures() || DescriptorBuffers() || DescriptorHeaps())
             patched.allocationSize = mrq.size;
           else
             RemoveNextStruct(&patched, VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO);
@@ -482,12 +483,18 @@ bool WrappedVulkan::Serialise_vkAllocateMemory(SerialiserType &ser, VkDevice dev
         ObjDisp(device)->GetBufferMemoryRequirements(Unwrap(device), buf, &mrq);
 
         // Can't create a memory-spanning buffer for this allocation.
-        // For descriptor buffers try again if that is enabled as those memory types are sometimes unique.
-        if((((1 << AllocateInfo.memoryTypeIndex) & mrq.memoryTypeBits) == 0) && DescriptorBuffers())
+        // For descriptor buffers or heaps try again if that is enabled as those memory types are
+        // sometimes unique.
+        if((((1 << AllocateInfo.memoryTypeIndex) & mrq.memoryTypeBits) == 0) &&
+           (DescriptorBuffers() || DescriptorHeaps()))
         {
           ObjDisp(device)->DestroyBuffer(Unwrap(device), buf, NULL);
 
-          bufInfo.usage |= VK_BUFFER_USAGE_RESOURCE_DESCRIPTOR_BUFFER_BIT_EXT;
+          if(DescriptorBuffers())
+            bufInfo.usage |= VK_BUFFER_USAGE_RESOURCE_DESCRIPTOR_BUFFER_BIT_EXT;
+          else
+            bufInfo.usage |=
+                VK_BUFFER_USAGE_DESCRIPTOR_HEAP_BIT_EXT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
 
           ret = ObjDisp(device)->CreateBuffer(Unwrap(device), &bufInfo, NULL, &buf);
           RDCASSERTEQUAL(ret, VK_SUCCESS);
@@ -598,7 +605,7 @@ VkResult WrappedVulkan::vkAllocateMemory(VkDevice device, const VkMemoryAllocate
   // means that when RT is enabled ALL MEMORY IN THE ENTIRE PROGRAM must be marked as BDA just in
   // case.
   bool forceBDA = false;
-  if(IsCaptureMode(m_State) && (AccelerationStructures() || DescriptorBuffers()))
+  if(IsCaptureMode(m_State) && (AccelerationStructures() || DescriptorBuffers() || DescriptorHeaps()))
   {
     // force BDA flag when creating, by adding the struct if needed
     forceBDA = true;
@@ -749,10 +756,14 @@ VkResult WrappedVulkan::vkAllocateMemory(VkDevice device, const VkMemoryAllocate
         wholeMemBuf = VK_NULL_HANDLE;
 
         // can't create a memory-spanning buffer for this allocation. Try again with descriptor
-        // buffers if that is enabled as those memory types are sometimes unique.
-        if(DescriptorBuffers())
+        // buffers or heaps if that is enabled as those memory types are sometimes unique.
+        if(DescriptorBuffers() || DescriptorHeaps())
         {
-          bufInfo.usage |= VK_BUFFER_USAGE_RESOURCE_DESCRIPTOR_BUFFER_BIT_EXT;
+          if(DescriptorBuffers())
+            bufInfo.usage |= VK_BUFFER_USAGE_RESOURCE_DESCRIPTOR_BUFFER_BIT_EXT;
+          else
+            bufInfo.usage |=
+                VK_BUFFER_USAGE_DESCRIPTOR_HEAP_BIT_EXT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
 
           ret = ObjDisp(device)->CreateBuffer(Unwrap(device), &bufInfo, NULL, &wholeMemBuf);
           RDCASSERTEQUAL(ret, VK_SUCCESS);
@@ -2582,6 +2593,9 @@ bool WrappedVulkan::Serialise_vkCreateImage(SerialiserType &ser, VkDevice device
 
     flags |= DefaultImageCreateFlags();
 
+    if(DescriptorHeaps())
+      flags |= VK_IMAGE_CREATE_DESCRIPTOR_HEAP_CAPTURE_REPLAY_BIT_EXT;
+
     APIProps.YUVTextures |= IsYUVFormat(CreateInfo.format);
 
     const bool isSparse =
@@ -2940,7 +2954,12 @@ VkResult WrappedVulkan::vkCreateImage(VkDevice device, const VkImageCreateInfo *
   flags &= ~VK_IMAGE_CREATE_SUBSAMPLED_BIT_EXT;
 
   if(IsCaptureMode(m_State))
+  {
     flags |= DefaultImageCreateFlags();
+
+    if(DescriptorHeaps())
+      flags |= VK_IMAGE_CREATE_DESCRIPTOR_HEAP_CAPTURE_REPLAY_BIT_EXT;
+  }
 
   size_t tempMemSize = GetNextPatchSize(createInfo_adjusted.pNext);
 
@@ -3033,6 +3052,25 @@ VkResult WrappedVulkan::vkCreateImage(VkDevice device, const VkImageCreateInfo *
         opaqueData.addForSerialising((VkBaseInStructure *)&serialisedCreateInfo);
       }
 
+      byte heapOpaqueData[FixedOpaqueDescriptorCaptureSize] = {};
+      VkHostAddressRangeConstEXT heapOpaqueRange = {heapOpaqueData, m_ImageHeapOpaqueDataSize};
+      VkOpaqueCaptureDataCreateInfoEXT heapOpaque = {
+          VK_STRUCTURE_TYPE_OPAQUE_CAPTURE_DATA_CREATE_INFO_EXT,
+          serialisedCreateInfo.pNext,
+          &heapOpaqueRange,
+      };
+
+      if(DescriptorHeaps())
+      {
+        VkHostAddressRangeEXT dst = {heapOpaqueData, m_ImageHeapOpaqueDataSize};
+        VkImage unwrappedImage = Unwrap(*pImage);
+        VkResult vkr = ObjDisp(device)->GetImageOpaqueCaptureDataEXT(Unwrap(device), 1,
+                                                                     &unwrappedImage, &dst);
+        RDCASSERTEQUAL(vkr, VK_SUCCESS);
+
+        serialisedCreateInfo.pNext = &heapOpaque;
+      }
+
       {
         CACHE_THREAD_SERIALISER();
 
@@ -3045,9 +3083,9 @@ VkResult WrappedVulkan::vkCreateImage(VkDevice device, const VkImageCreateInfo *
       VkResourceRecord *record = GetResourceManager()->AddResourceRecord(*pImage);
       record->AddChunk(chunk);
 
-      // can't differentiate whether this image will be used with descriptor buffers, must force
-      // reference all images
-      if(DescriptorBuffers())
+      // can't differentiate whether this image will be used with descriptor buffers or heaps, must
+      // force reference all images
+      if(DescriptorBuffers() || DescriptorHeaps())
         AddForcedReference(record);
 
       record->resInfo = new ResourceInfo();
