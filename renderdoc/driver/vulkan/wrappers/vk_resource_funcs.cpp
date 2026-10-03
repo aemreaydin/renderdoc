@@ -2330,7 +2330,7 @@ VkResult WrappedVulkan::vkCreateBuffer(VkDevice device, const VkBufferCreateInfo
 
       record->resInfo = NULL;
 
-      if(isSparse || isExternal || m_DescriptorBuffers)
+      if(isSparse || isExternal || m_DescriptorBuffers || m_DescriptorHeaps)
       {
         record->resInfo = new ResourceInfo();
 
@@ -3053,7 +3053,8 @@ VkResult WrappedVulkan::vkCreateImage(VkDevice device, const VkImageCreateInfo *
       }
 
       byte heapOpaqueData[FixedOpaqueDescriptorCaptureSize] = {};
-      VkHostAddressRangeConstEXT heapOpaqueRange = {heapOpaqueData, m_ImageHeapOpaqueDataSize};
+      VkHostAddressRangeConstEXT heapOpaqueRange = {
+          heapOpaqueData, m_DescriptorHeapProperties.imageCaptureReplayOpaqueDataSize};
       VkOpaqueCaptureDataCreateInfoEXT heapOpaque = {
           VK_STRUCTURE_TYPE_OPAQUE_CAPTURE_DATA_CREATE_INFO_EXT,
           serialisedCreateInfo.pNext,
@@ -3062,7 +3063,8 @@ VkResult WrappedVulkan::vkCreateImage(VkDevice device, const VkImageCreateInfo *
 
       if(DescriptorHeaps())
       {
-        VkHostAddressRangeEXT dst = {heapOpaqueData, m_ImageHeapOpaqueDataSize};
+        VkHostAddressRangeEXT dst = {heapOpaqueData,
+                                     m_DescriptorHeapProperties.imageCaptureReplayOpaqueDataSize};
         VkImage unwrappedImage = Unwrap(*pImage);
         VkResult vkr = ObjDisp(device)->GetImageOpaqueCaptureDataEXT(Unwrap(device), 1,
                                                                      &unwrappedImage, &dst);
@@ -4162,25 +4164,27 @@ VkResult WrappedVulkan::vkCreateAccelerationStructureKHR(
 
       GetResourceManager()->MarkDirtyResource(id);
       if(pCreateInfo->type == VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR ||
-         pCreateInfo->type == VK_ACCELERATION_STRUCTURE_TYPE_GENERIC_KHR || DescriptorBuffers())
+         pCreateInfo->type == VK_ACCELERATION_STRUCTURE_TYPE_GENERIC_KHR || DescriptorBuffers() ||
+         DescriptorHeaps())
       {
         // We force reference BLASs as it is not feasible to track at the API level which TLASs
         // reference them.  We force ref generics too as they could bottom or top level so we
         // conservatively assume they are bottom
-        // when descriptor buffers are enabled, we must force reference all ASs
+        // when descriptor buffers or heaps are enabled, we must force reference all ASs
         AddForcedReference(record);
 
         // in case we're currently capturing, immediately consider the AS as referenced
         GetResourceManager()->MarkResourceFrameReferenced(record->GetResourceID(), eFrameRef_Read);
       }
 
+      if(DescriptorBuffers() || DescriptorHeaps())
+      {
+        SCOPED_LOCK(m_ASLookupByAddrLock);
+        m_ASLookupByAddr[addr] = id;
+      }
+
       if(m_DescriptorBuffers)
       {
-        {
-          SCOPED_LOCK(m_ASLookupByAddrLock);
-          m_ASLookupByAddr[addr] = id;
-        }
-
         VkDescriptorGetInfoEXT getDesc = {
             VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT,
         };

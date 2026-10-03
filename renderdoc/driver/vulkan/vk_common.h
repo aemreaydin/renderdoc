@@ -1498,6 +1498,8 @@ enum class VulkanChunk : uint32_t
   vkCmdBindSamplerHeapEXT,
   vkCmdBindResourceHeapEXT,
   vkCmdPushDataEXT,
+  vkWriteSamplerDescriptorsEXT,
+  vkWriteResourceDescriptorsEXT,
   Max,
 };
 
@@ -1707,6 +1709,7 @@ DECLARE_REFLECTION_STRUCT(VkImageCompressionControlEXT);
 DECLARE_REFLECTION_STRUCT(VkImageCompressionPropertiesEXT);
 DECLARE_REFLECTION_STRUCT(VkImageCopy2);
 DECLARE_REFLECTION_STRUCT(VkImageCreateInfo);
+DECLARE_REFLECTION_STRUCT(VkImageDescriptorInfoEXT);
 DECLARE_REFLECTION_STRUCT(VkImageCreateFlags2CreateInfoKHR);
 DECLARE_REFLECTION_STRUCT(VkImageDrmFormatModifierExplicitCreateInfoEXT);
 DECLARE_REFLECTION_STRUCT(VkImageDrmFormatModifierListCreateInfoEXT);
@@ -2079,6 +2082,7 @@ DECLARE_REFLECTION_STRUCT(VkRenderPassInputAttachmentAspectCreateInfo);
 DECLARE_REFLECTION_STRUCT(VkRenderPassMultiviewCreateInfo);
 DECLARE_REFLECTION_STRUCT(VkRenderPassSampleLocationsBeginInfoEXT);
 DECLARE_REFLECTION_STRUCT(VkResolveImageInfo2);
+DECLARE_REFLECTION_STRUCT(VkResourceDescriptorInfoEXT);
 DECLARE_REFLECTION_STRUCT(VkSampleLocationsInfoEXT);
 DECLARE_REFLECTION_STRUCT(VkSamplerBorderColorComponentMappingCreateInfoEXT);
 DECLARE_REFLECTION_STRUCT(VkSamplerCaptureDescriptorDataInfoEXT);
@@ -2132,6 +2136,7 @@ DECLARE_REFLECTION_STRUCT(VkSwapchainPresentModesCreateInfoKHR);
 DECLARE_REFLECTION_STRUCT(VkSwapchainPresentScalingCreateInfoKHR);
 DECLARE_REFLECTION_STRUCT(VkSwapchainTimeDomainPropertiesEXT);
 DECLARE_REFLECTION_STRUCT(VkSwapchainTimingPropertiesEXT);
+DECLARE_REFLECTION_STRUCT(VkTexelBufferDescriptorInfoEXT);
 DECLARE_REFLECTION_STRUCT(VkTextureLODGatherFormatPropertiesAMD);
 DECLARE_REFLECTION_STRUCT(VkTimelineSemaphoreSubmitInfo);
 DECLARE_REFLECTION_STRUCT(VkValidationCacheCreateInfoEXT);
@@ -2299,6 +2304,7 @@ DECLARE_DESERIALISE_TYPE(VkImageCompressionControlEXT);
 DECLARE_DESERIALISE_TYPE(VkImageCompressionPropertiesEXT);
 DECLARE_DESERIALISE_TYPE(VkImageCopy2);
 DECLARE_DESERIALISE_TYPE(VkImageCreateInfo);
+DECLARE_DESERIALISE_TYPE(VkImageDescriptorInfoEXT);
 DECLARE_DESERIALISE_TYPE(VkImageCreateFlags2CreateInfoKHR);
 DECLARE_DESERIALISE_TYPE(VkImageDrmFormatModifierExplicitCreateInfoEXT);
 DECLARE_DESERIALISE_TYPE(VkImageDrmFormatModifierListCreateInfoEXT);
@@ -2668,6 +2674,7 @@ DECLARE_DESERIALISE_TYPE(VkRenderPassInputAttachmentAspectCreateInfo);
 DECLARE_DESERIALISE_TYPE(VkRenderPassMultiviewCreateInfo);
 DECLARE_DESERIALISE_TYPE(VkRenderPassSampleLocationsBeginInfoEXT);
 DECLARE_DESERIALISE_TYPE(VkResolveImageInfo2);
+DECLARE_DESERIALISE_TYPE(VkResourceDescriptorInfoEXT);
 DECLARE_DESERIALISE_TYPE(VkSampleLocationsInfoEXT);
 DECLARE_DESERIALISE_TYPE(VkSamplerBorderColorComponentMappingCreateInfoEXT);
 DECLARE_DESERIALISE_TYPE(VkSamplerCaptureDescriptorDataInfoEXT);
@@ -2721,6 +2728,7 @@ DECLARE_DESERIALISE_TYPE(VkSwapchainPresentModesCreateInfoKHR);
 DECLARE_DESERIALISE_TYPE(VkSwapchainPresentScalingCreateInfoKHR);
 DECLARE_DESERIALISE_TYPE(VkSwapchainTimeDomainPropertiesEXT);
 DECLARE_DESERIALISE_TYPE(VkSwapchainTimingPropertiesEXT);
+DECLARE_DESERIALISE_TYPE(VkTexelBufferDescriptorInfoEXT);
 DECLARE_DESERIALISE_TYPE(VkTextureLODGatherFormatPropertiesAMD);
 DECLARE_DESERIALISE_TYPE(VkTimelineSemaphoreSubmitInfo);
 DECLARE_DESERIALISE_TYPE(VkValidationCacheCreateInfoEXT);

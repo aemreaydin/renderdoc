@@ -220,6 +220,51 @@ struct DescriptorBuffer
 };
 
 DOCUMENT(R"(
+VKDescriptorHeap()
+VKDescriptorHeap(other: VKDescriptorHeap)
+
+A bound descriptor heap.
+)");
+struct DescriptorHeap
+{
+  DOCUMENT("");
+  DescriptorHeap() = default;
+  DescriptorHeap(const DescriptorHeap &) = default;
+  DescriptorHeap &operator=(const DescriptorHeap &) = default;
+
+  DOCUMENT(R"(The :class:`ResourceId` of the buffer holding the heap, or empty if no heap is bound.
+
+:type: ResourceId
+)");
+  ResourceId buffer;
+
+  DOCUMENT(R"(The offset in bytes from the base of the buffer to the start of the bound heap.
+
+:type: int
+)");
+  uint64_t byteOffset = 0;
+
+  DOCUMENT(R"(The size in bytes of the bound heap.
+
+:type: int
+)");
+  uint64_t byteSize = 0;
+
+  DOCUMENT(R"(The offset in bytes from the start of the bound heap to the range reserved for the
+implementation.
+
+:type: int
+)");
+  uint64_t reservedRangeOffset = 0;
+
+  DOCUMENT(R"(The size in bytes of the range reserved for the implementation.
+
+:type: int
+)");
+  uint64_t reservedRangeSize = 0;
+};
+
+DOCUMENT(R"(
 VKPipeline()
 VKPipeline(other: VKPipeline)
 
@@ -1634,6 +1679,18 @@ struct State
 )");
   bytebuf pushconsts;
 
+  DOCUMENT(R"(The bound resource heap.
+
+:type: VKDescriptorHeap
+)");
+  DescriptorHeap resourceHeap;
+
+  DOCUMENT(R"(The bound sampler heap.
+
+:type: VKDescriptorHeap
+)");
+  DescriptorHeap samplerHeap;
+
   DOCUMENT(R"(The input assembly stage.
 
 :type: VKInputAssembly
@@ -1757,6 +1814,7 @@ struct State
 DECLARE_REFLECTION_STRUCT(VKPipe::DynamicOffset);
 DECLARE_REFLECTION_STRUCT(VKPipe::DescriptorSet);
 DECLARE_REFLECTION_STRUCT(VKPipe::DescriptorBuffer);
+DECLARE_REFLECTION_STRUCT(VKPipe::DescriptorHeap);
 DECLARE_REFLECTION_STRUCT(VKPipe::Pipeline);
 DECLARE_REFLECTION_STRUCT(VKPipe::IndexBuffer);
 DECLARE_REFLECTION_STRUCT(VKPipe::InputAssembly);

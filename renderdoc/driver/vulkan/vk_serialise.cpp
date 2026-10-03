@@ -11182,6 +11182,102 @@ void Deserialise(const VkOpaqueCaptureDataCreateInfoEXT &el)
 }
 
 template <typename SerialiserType>
+void DoSerialise(SerialiserType &ser, VkImageDescriptorInfoEXT &el)
+{
+  RDCASSERT(ser.IsReading() || el.sType == VK_STRUCTURE_TYPE_IMAGE_DESCRIPTOR_INFO_EXT);
+  SerialiseNext(ser, el.sType, el.pNext);
+
+  SERIALISE_MEMBER_OPT(pView).Important();
+  SERIALISE_MEMBER(layout);
+}
+
+template <>
+void Deserialise(const VkImageDescriptorInfoEXT &el)
+{
+  DeserialiseNext(el.pNext);
+  if(el.pView)
+  {
+    Deserialise(*el.pView);
+    delete el.pView;
+  }
+}
+
+template <typename SerialiserType>
+void DoSerialise(SerialiserType &ser, VkTexelBufferDescriptorInfoEXT &el)
+{
+  RDCASSERT(ser.IsReading() || el.sType == VK_STRUCTURE_TYPE_TEXEL_BUFFER_DESCRIPTOR_INFO_EXT);
+  SerialiseNext(ser, el.sType, el.pNext);
+
+  SERIALISE_MEMBER(format).Important();
+  SERIALISE_MEMBER(addressRange).Important();
+}
+
+template <>
+void Deserialise(const VkTexelBufferDescriptorInfoEXT &el)
+{
+  DeserialiseNext(el.pNext);
+}
+
+template <typename SerialiserType>
+void DoSerialise(SerialiserType &ser, VkResourceDescriptorInfoEXT &el)
+{
+  RDCASSERT(ser.IsReading() || el.sType == VK_STRUCTURE_TYPE_RESOURCE_DESCRIPTOR_INFO_EXT);
+  SerialiseNext(ser, el.sType, el.pNext);
+
+  SERIALISE_MEMBER(type).Important();
+  switch(el.type)
+  {
+    case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+    case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+    case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+      SERIALISE_MEMBER_OPT(data.pImage).Named("pImage").Important();
+      break;
+    case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+    case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+      SERIALISE_MEMBER_OPT(data.pTexelBuffer).Named("pTexelBuffer").Important();
+      break;
+    case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+    case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+    case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR:
+      SERIALISE_MEMBER_OPT(data.pAddressRange).Named("pAddressRange").Important();
+      break;
+    default:
+      RDCERR("Unsupported descriptor type %s in VkResourceDescriptorInfoEXT", ToStr(el.type).c_str());
+      break;
+  }
+}
+
+template <>
+void Deserialise(const VkResourceDescriptorInfoEXT &el)
+{
+  DeserialiseNext(el.pNext);
+  switch(el.type)
+  {
+    case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+    case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+    case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+      if(el.data.pImage)
+      {
+        Deserialise(*el.data.pImage);
+        delete el.data.pImage;
+      }
+      break;
+    case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+    case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+      if(el.data.pTexelBuffer)
+      {
+        Deserialise(*el.data.pTexelBuffer);
+        delete el.data.pTexelBuffer;
+      }
+      break;
+    case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+    case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+    case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR: delete el.data.pAddressRange; break;
+    default: break;
+  }
+}
+
+template <typename SerialiserType>
 void DoSerialise(SerialiserType &ser, VkBindHeapInfoEXT &el)
 {
   RDCASSERT(ser.IsReading() || el.sType == VK_STRUCTURE_TYPE_BIND_HEAP_INFO_EXT);
@@ -16148,6 +16244,9 @@ INSTANTIATE_SERIALISE_TYPE(VkMultisampledRenderToSingleSampledInfoEXT);
 INSTANTIATE_SERIALISE_TYPE(VkMultisamplePropertiesEXT);
 INSTANTIATE_SERIALISE_TYPE(VkMutableDescriptorTypeCreateInfoEXT);
 INSTANTIATE_SERIALISE_TYPE(VkOpaqueCaptureDataCreateInfoEXT);
+INSTANTIATE_SERIALISE_TYPE(VkImageDescriptorInfoEXT);
+INSTANTIATE_SERIALISE_TYPE(VkTexelBufferDescriptorInfoEXT);
+INSTANTIATE_SERIALISE_TYPE(VkResourceDescriptorInfoEXT);
 INSTANTIATE_SERIALISE_TYPE(VkBindHeapInfoEXT);
 INSTANTIATE_SERIALISE_TYPE(VkPushDataInfoEXT);
 INSTANTIATE_SERIALISE_TYPE(VkHostAddressRangeConstEXT);

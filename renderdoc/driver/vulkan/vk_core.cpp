@@ -5137,6 +5137,10 @@ bool WrappedVulkan::ProcessChunk(ReadSerialiser &ser, VulkanChunk chunk)
     case VulkanChunk::vkCmdBindResourceHeapEXT:
       return Serialise_vkCmdBindResourceHeapEXT(ser, VK_NULL_HANDLE, NULL);
     case VulkanChunk::vkCmdPushDataEXT: return Serialise_vkCmdPushDataEXT(ser, VK_NULL_HANDLE, NULL);
+    case VulkanChunk::vkWriteSamplerDescriptorsEXT:
+      return Serialise_vkWriteSamplerDescriptorsEXT(ser, VK_NULL_HANDLE, 0, NULL, NULL);
+    case VulkanChunk::vkWriteResourceDescriptorsEXT:
+      return Serialise_vkWriteResourceDescriptorsEXT(ser, VK_NULL_HANDLE, 0, NULL, NULL);
 
     // chunks that are reserved but not yet serialised
     case VulkanChunk::vkResetCommandPool:

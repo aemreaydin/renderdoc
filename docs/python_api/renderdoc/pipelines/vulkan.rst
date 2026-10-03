@@ -23,6 +23,9 @@ Pipeline and Bindings
 .. autoclass:: VKDescriptorBuffer
   :members:
 
+.. autoclass:: VKDescriptorHeap
+  :members:
+
 .. autoclass:: VKDynamicOffset
   :members:
 

@@ -2325,6 +2325,24 @@ void VulkanReplay::SavePipelineState(uint32_t eventId)
 
     // these are not actually pipeline specific but for organisation/ease we store them there
     ret.graphics.descriptorBuffers = ret.compute.descriptorBuffers;
+
+    for(rdcpair<VKPipe::DescriptorHeap *, const VkBindHeapInfoEXT *> heap :
+        {make_rdcpair(&ret.resourceHeap, &state.resourceHeap),
+         make_rdcpair(&ret.samplerHeap, &state.samplerHeap)})
+    {
+      VKPipe::DescriptorHeap &dst = *heap.first;
+      const VkBindHeapInfoEXT &src = *heap.second;
+
+      dst = VKPipe::DescriptorHeap();
+
+      if(src.heapRange.address == 0)
+        continue;
+
+      m_pDriver->GetResIDFromAddr(src.heapRange.address, dst.buffer, dst.byteOffset);
+      dst.byteSize = src.heapRange.size;
+      dst.reservedRangeOffset = src.reservedRangeOffset;
+      dst.reservedRangeSize = src.reservedRangeSize;
+    }
   }
 
   // image layouts
@@ -2399,9 +2417,18 @@ void VulkanReplay::FillSamplerDescriptor(SamplerDescriptor &dstel, const Descrip
   if(srcel.sampler == ResourceId())
     return;
 
-  const VulkanCreationInfo::Sampler &sampl = c.m_Sampler[srcel.sampler];
-
   dstel.object = srcel.sampler;
+
+  FillSampler(dstel, c.m_Sampler[srcel.sampler]);
+
+  // immutable samplers set the offset to non-zero so that we can check it here without knowing what
+  // layout this descriptor binding came from
+  dstel.creationTimeConstant = srcel.offset != 0;
+}
+
+void VulkanReplay::FillSampler(SamplerDescriptor &dstel, const VulkanCreationInfo::Sampler &sampl)
+{
+  VulkanCreationInfo &c = m_pDriver->m_CreationInfo;
 
   // sampler info
   dstel.filter = MakeFilter(sampl.minFilter, sampl.magFilter, sampl.mipmapMode,
@@ -2418,10 +2445,6 @@ void VulkanReplay::FillSamplerDescriptor(SamplerDescriptor &dstel, const Descrip
   dstel.borderColorType = CompType::Float;
   dstel.unnormalized = sampl.unnormalizedCoordinates;
   dstel.seamlessCubemaps = sampl.seamless;
-
-  // immutable samplers set the offset to non-zero so that we can check it here without knowing what
-  // layout this descriptor binding came from
-  dstel.creationTimeConstant = srcel.offset != 0;
 
   if(sampl.ycbcr != ResourceId())
   {
@@ -2504,64 +2527,11 @@ void VulkanReplay::FillDescriptor(Descriptor &dstel, const DescriptorSetSlot &sr
 
     if(viewid != ResourceId())
     {
-      const VulkanCreationInfo::ImageView &viewInfo = c.m_ImageView[viewid];
-
       dstel.view = viewid;
-      dstel.resource = viewInfo.image;
-      dstel.format = MakeResourceFormat(viewInfo.format);
-
-      Convert(dstel.swizzle, viewInfo.componentMapping);
-      dstel.firstMip = viewInfo.range.baseMipLevel & 0xff;
-      dstel.firstSlice = viewInfo.range.baseArrayLayer & 0xffff;
-      dstel.numMips = viewInfo.range.levelCount & 0xff;
-      dstel.numSlices = viewInfo.range.layerCount & 0xffff;
-
-      if(viewInfo.viewType == VK_IMAGE_VIEW_TYPE_3D)
-      {
-        if(descriptorType == DescriptorSlotType::StorageImage)
-        {
-          dstel.firstSlice = viewInfo.storageSliceOffset & 0xffff;
-          dstel.numSlices = viewInfo.storageSliceCount & 0xffff;
-        }
-        else
-        {
-          dstel.firstSlice = 0;
-          dstel.numSlices = 0;
-        }
-      }
+      FillImageView(dstel, c.m_ImageView[viewid], descriptorType == DescriptorSlotType::StorageImage);
 
       // cheeky hack, store image layout enum in byteOffset as it's not used for images
       dstel.byteOffset = convert(srcel.imageLayoutOrFormat);
-
-      dstel.minLODClamp = viewInfo.minLOD;
-
-      switch(viewInfo.viewType)
-      {
-        case VK_IMAGE_VIEW_TYPE_1D: dstel.textureType = TextureType::Texture1D; break;
-        case VK_IMAGE_VIEW_TYPE_1D_ARRAY: dstel.textureType = TextureType::Texture1DArray; break;
-        case VK_IMAGE_VIEW_TYPE_2D:
-        {
-          if(c.m_Image[viewInfo.image].samples > VK_SAMPLE_COUNT_1_BIT)
-            dstel.textureType = TextureType::Texture2DMS;
-          else
-            dstel.textureType = TextureType::Texture2D;
-          break;
-        }
-        case VK_IMAGE_VIEW_TYPE_2D_ARRAY:
-        {
-          if(c.m_Image[viewInfo.image].samples > VK_SAMPLE_COUNT_1_BIT)
-            dstel.textureType = TextureType::Texture2DMSArray;
-          else
-            dstel.textureType = TextureType::Texture2DArray;
-          break;
-        }
-        case VK_IMAGE_VIEW_TYPE_3D: dstel.textureType = TextureType::Texture3D; break;
-        case VK_IMAGE_VIEW_TYPE_CUBE: dstel.textureType = TextureType::TextureCube; break;
-        case VK_IMAGE_VIEW_TYPE_CUBE_ARRAY:
-          dstel.textureType = TextureType::TextureCubeArray;
-          break;
-        case VK_IMAGE_VIEW_TYPE_MAX_ENUM: break;
-      }
     }
     else
     {
@@ -2636,6 +2606,63 @@ void VulkanReplay::FillDescriptor(Descriptor &dstel, const DescriptorSetSlot &sr
       dstel.resource = srcel.resource;
       dstel.byteSize = c.m_AccelerationStructure[srcel.resource].size;
     }
+  }
+}
+
+void VulkanReplay::FillImageView(Descriptor &dstel, const VulkanCreationInfo::ImageView &viewInfo,
+                                 bool storage)
+{
+  VulkanCreationInfo &c = m_pDriver->m_CreationInfo;
+
+  dstel.resource = viewInfo.image;
+  dstel.format = MakeResourceFormat(viewInfo.format);
+
+  Convert(dstel.swizzle, viewInfo.componentMapping);
+  dstel.firstMip = viewInfo.range.baseMipLevel & 0xff;
+  dstel.firstSlice = viewInfo.range.baseArrayLayer & 0xffff;
+  dstel.numMips = viewInfo.range.levelCount & 0xff;
+  dstel.numSlices = viewInfo.range.layerCount & 0xffff;
+
+  if(viewInfo.viewType == VK_IMAGE_VIEW_TYPE_3D)
+  {
+    if(storage)
+    {
+      dstel.firstSlice = viewInfo.storageSliceOffset & 0xffff;
+      dstel.numSlices = viewInfo.storageSliceCount & 0xffff;
+    }
+    else
+    {
+      dstel.firstSlice = 0;
+      dstel.numSlices = 0;
+    }
+  }
+
+  dstel.minLODClamp = viewInfo.minLOD;
+
+  switch(viewInfo.viewType)
+  {
+    case VK_IMAGE_VIEW_TYPE_1D: dstel.textureType = TextureType::Texture1D; break;
+    case VK_IMAGE_VIEW_TYPE_1D_ARRAY: dstel.textureType = TextureType::Texture1DArray; break;
+    case VK_IMAGE_VIEW_TYPE_2D:
+    {
+      if(c.m_Image[viewInfo.image].samples > VK_SAMPLE_COUNT_1_BIT)
+        dstel.textureType = TextureType::Texture2DMS;
+      else
+        dstel.textureType = TextureType::Texture2D;
+      break;
+    }
+    case VK_IMAGE_VIEW_TYPE_2D_ARRAY:
+    {
+      if(c.m_Image[viewInfo.image].samples > VK_SAMPLE_COUNT_1_BIT)
+        dstel.textureType = TextureType::Texture2DMSArray;
+      else
+        dstel.textureType = TextureType::Texture2DArray;
+      break;
+    }
+    case VK_IMAGE_VIEW_TYPE_3D: dstel.textureType = TextureType::Texture3D; break;
+    case VK_IMAGE_VIEW_TYPE_CUBE: dstel.textureType = TextureType::TextureCube; break;
+    case VK_IMAGE_VIEW_TYPE_CUBE_ARRAY: dstel.textureType = TextureType::TextureCubeArray; break;
+    case VK_IMAGE_VIEW_TYPE_MAX_ENUM: break;
   }
 }
 
@@ -2714,6 +2741,39 @@ rdcarray<Descriptor> VulkanReplay::GetDescriptors(ResourceId descriptorStore,
       // constants are not valid outside of the current event. We just pretend that all push
       // constants are the same and mutable
       d.byteSize = state.pushConstSize;
+    }
+
+    return ret;
+  }
+
+  auto heapit = m_pDriver->m_HeapDescriptorStores.find(descriptorStore);
+  if(heapit != m_pDriver->m_HeapDescriptorStores.end())
+  {
+    bytebuf data;
+    GetBufferData(descriptorStore, 0, 0, data);
+
+    size_t dst = 0;
+    for(const DescriptorRange &r : ranges)
+    {
+      for(uint32_t i = 0; i < r.count; i++, dst++)
+      {
+        const WrappedVulkan::HeapDescriptor *desc = m_pDriver->LookupHeapDescriptor(
+            data, r.offset + i * r.descriptorSize, heapit->second.samplerHeap);
+
+        // bytes no recorded write produced stay unknown
+        if(!desc)
+          continue;
+
+        FillDescriptor(ret[dst], desc->slot);
+
+        if(desc->view.image != ResourceId())
+        {
+          FillImageView(ret[dst], desc->view, desc->slot.type == DescriptorSlotType::StorageImage);
+
+          // cheeky hack, store image layout enum in byteOffset as it's not used for images
+          ret[dst].byteOffset = convert(desc->slot.imageLayoutOrFormat);
+        }
+      }
     }
 
     return ret;
@@ -2861,6 +2921,31 @@ rdcarray<SamplerDescriptor> VulkanReplay::GetSamplerDescriptors(ResourceId descr
   if(m_pDriver->m_BakedCmdBufferInfo.find(descriptorStore) != m_pDriver->m_BakedCmdBufferInfo.end())
   {
     // not sampler data
+    return ret;
+  }
+
+  auto heapit = m_pDriver->m_HeapDescriptorStores.find(descriptorStore);
+  if(heapit != m_pDriver->m_HeapDescriptorStores.end())
+  {
+    bytebuf data;
+    GetBufferData(descriptorStore, 0, 0, data);
+
+    size_t dst = 0;
+    for(const DescriptorRange &r : ranges)
+    {
+      for(uint32_t i = 0; i < r.count; i++, dst++)
+      {
+        const WrappedVulkan::HeapDescriptor *desc = m_pDriver->LookupHeapDescriptor(
+            data, r.offset + i * r.descriptorSize, heapit->second.samplerHeap);
+
+        if(desc && desc->slot.type == DescriptorSlotType::Sampler)
+        {
+          ret[dst].type = DescriptorType::Sampler;
+          FillSampler(ret[dst], desc->sampler);
+        }
+      }
+    }
+
     return ret;
   }
 
@@ -3147,6 +3232,30 @@ rdcarray<DescriptorLogicalLocation> VulkanReplay::GetDescriptorLocations(
       d.category = DescriptorCategory::ConstantBlock;
       d.fixedBindNumber = ~0U - 1;
       d.logicalBindName = "Push constants";
+    }
+
+    return ret;
+  }
+
+  auto heapit = m_pDriver->m_HeapDescriptorStores.find(descriptorStore);
+  if(heapit != m_pDriver->m_HeapDescriptorStores.end())
+  {
+    const WrappedVulkan::HeapDescriptorStore &store = heapit->second;
+
+    size_t dst = 0;
+    for(const DescriptorRange &r : ranges)
+    {
+      for(uint32_t i = 0; i < r.count; i++, dst++)
+      {
+        DescriptorLogicalLocation &d = ret[dst];
+
+        uint32_t slot = (r.offset + i * r.descriptorSize - store.firstOffset) / store.stride;
+
+        d.stageMask = ShaderStageMask::All;
+        d.category = store.samplerHeap ? DescriptorCategory::Sampler : DescriptorCategory::Unknown;
+        d.fixedBindNumber = slot;
+        d.logicalBindName = StringFormat::Fmt("%u", slot);
+      }
     }
 
     return ret;

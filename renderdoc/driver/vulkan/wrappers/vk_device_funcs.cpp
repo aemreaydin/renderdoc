@@ -4622,6 +4622,17 @@ bool WrappedVulkan::Serialise_vkCreateDevice(SerialiserType &ser, VkPhysicalDevi
     m_DescriptorHeaps = m_EnabledExtensions.ext_EXT_descriptor_heap && descHeapFeats &&
                         descHeapFeats->descriptorHeap;
 
+    if(m_DescriptorHeaps)
+    {
+      m_DescriptorHeapProperties = {
+          VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_HEAP_PROPERTIES_EXT,
+      };
+      VkPhysicalDeviceProperties2 propsBase = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2};
+      propsBase.pNext = &m_DescriptorHeapProperties;
+      ObjDisp(physicalDevice)->GetPhysicalDeviceProperties2(Unwrap(physicalDevice), &propsBase);
+      m_DescriptorHeapProperties.pNext = NULL;
+    }
+
     const VkPhysicalDeviceDescriptorBufferFeaturesEXT *descBufFeats =
         (const VkPhysicalDeviceDescriptorBufferFeaturesEXT *)FindNextStruct(
             &createInfo, VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_FEATURES_EXT);
@@ -5132,13 +5143,13 @@ VkResult WrappedVulkan::vkCreateDevice(VkPhysicalDevice physicalDevice,
     descHeapFeatures->descriptorHeapCaptureReplay = VK_TRUE;
     m_DescriptorHeaps = true;
 
-    VkPhysicalDeviceDescriptorHeapPropertiesEXT heapProps = {
+    m_DescriptorHeapProperties = {
         VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_HEAP_PROPERTIES_EXT,
     };
     VkPhysicalDeviceProperties2 propsBase = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2};
-    propsBase.pNext = &heapProps;
+    propsBase.pNext = &m_DescriptorHeapProperties;
     ObjDisp(physicalDevice)->GetPhysicalDeviceProperties2(Unwrap(physicalDevice), &propsBase);
-    m_ImageHeapOpaqueDataSize = heapProps.imageCaptureReplayOpaqueDataSize;
+    m_DescriptorHeapProperties.pNext = NULL;
 
     RDCLOG("descriptor heaps enabled, ALL MEMORY WILL BE MARKED AS BDA");
   }

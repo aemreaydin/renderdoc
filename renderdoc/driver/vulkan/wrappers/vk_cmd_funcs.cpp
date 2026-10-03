@@ -10497,6 +10497,8 @@ bool WrappedVulkan::Serialise_vkCmdBindSamplerHeapEXT(SerialiserType &ser, VkCom
     else
     {
       ObjDisp(commandBuffer)->CmdBindSamplerHeapEXT(Unwrap(commandBuffer), &BindInfo);
+
+      RegisterHeapDescriptorStore(BindInfo, true);
     }
   }
 
@@ -10554,6 +10556,8 @@ bool WrappedVulkan::Serialise_vkCmdBindResourceHeapEXT(SerialiserType &ser, VkCo
     else
     {
       ObjDisp(commandBuffer)->CmdBindResourceHeapEXT(Unwrap(commandBuffer), &BindInfo);
+
+      RegisterHeapDescriptorStore(BindInfo, false);
     }
   }
 

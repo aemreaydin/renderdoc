@@ -1790,7 +1790,11 @@ void VulkanPipelineStateViewer::setShaderState(const VKPipe::Pipeline &pipe,
     }
   }
 
-  if(descBuf)
+  const VKPipe::State &state = *m_Ctx.CurVulkanPipelineState();
+  const bool heaps =
+      state.resourceHeap.buffer != ResourceId() || state.samplerHeap.buffer != ResourceId();
+
+  if(descBuf || heaps)
   {
     descSets->setHeaderText(2, tr(" Buffer"));
     descSets->header()->showSection(3);    // buffer offset
@@ -1869,6 +1873,21 @@ void VulkanPipelineStateViewer::setShaderState(const VKPipe::Pipeline &pipe,
       descSets->addTopLevelItem(item);
     }
   }
+
+  // heap rows are tagged with negative indices, see descSet_itemActivated
+  auto addHeap = [descSets](const VKPipe::DescriptorHeap &heap, const QString &name,
+                            const QString &type, int tag) {
+    if(heap.buffer == ResourceId())
+      return;
+
+    RDTreeWidgetItem *item = new RDTreeWidgetItem(
+        {name, QString(), heap.buffer, qulonglong(heap.byteOffset), QString(), type, QString()});
+    item->setTag(tag);
+    descSets->addTopLevelItem(item);
+  };
+
+  addHeap(state.resourceHeap, tr("Resource Heap"), tr("Resources"), -1);
+  addHeap(state.samplerHeap, tr("Sampler Heap"), tr("Samplers"), -2);
 }
 
 rdcpair<uint32_t, uint32_t> GetSetAndBind(const UsedDescriptor &a, const ShaderReflection *refl)
@@ -3361,6 +3380,17 @@ void VulkanPipelineStateViewer::descSet_itemActivated(RDTreeWidgetItem *item, in
     return;
 
   int index = item->tag().toInt();
+
+  if(index < 0)
+  {
+    const VKPipe::State &state = *m_Ctx.CurVulkanPipelineState();
+    ResourceId heap = index == -1 ? state.resourceHeap.buffer : state.samplerHeap.buffer;
+
+    IDescriptorViewer *viewer = m_Ctx.ViewDescriptorStore(heap);
+
+    m_Ctx.AddDockWindow(viewer->Widget(), DockReference::AddTo, this);
+    return;
+  }
 
   const rdcarray<VKPipe::DescriptorSet> &descSets =
       stage->stage == ShaderStage::Compute ? m_Ctx.CurVulkanPipelineState()->compute.descriptorSets

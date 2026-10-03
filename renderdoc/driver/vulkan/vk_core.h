@@ -485,6 +485,31 @@ private:
                                                   VkFormat texelFormat = VK_FORMAT_UNDEFINED);
 
   void RegisterDescriptor(const bytebuf &key, const DescriptorSetSlot &data);
+  bool CheckReplayedHeapDescriptor(VkDescriptorType type, const VkHostAddressRangeConstEXT &captured,
+                                   const bytebuf &replayed);
+
+  struct HeapDescriptor
+  {
+    DescriptorSetSlot slot;
+    // heap image and sampler descriptors are written from create infos, with no object
+    VulkanCreationInfo::ImageView view;
+    VulkanCreationInfo::Sampler sampler;
+  };
+  // the descriptor each recorded heap descriptor write produced, keyed by its bytes
+  std::map<bytebuf, HeapDescriptor> m_HeapDescriptorLookup;
+  void RegisterHeapDescriptor(const bytebuf &bytes, const VkResourceDescriptorInfoEXT &info);
+  void RegisterHeapDescriptor(const bytebuf &bytes, const VkSamplerCreateInfo &info);
+
+  struct HeapDescriptorStore
+  {
+    bool samplerHeap;
+    uint32_t firstOffset;
+    uint32_t stride;
+  };
+  // buffers bound as heaps, registered as descriptor stores at their first bind
+  std::map<ResourceId, HeapDescriptorStore> m_HeapDescriptorStores;
+  void RegisterHeapDescriptorStore(const VkBindHeapInfoEXT &bind, bool samplerHeap);
+  const HeapDescriptor *LookupHeapDescriptor(const bytebuf &heap, uint64_t offset, bool samplerHeap);
   void LookupDescriptor(byte *descriptorBytes, size_t descriptorSize, DescriptorType type,
                         DescriptorSetSlot &data);
   ResourceId GetSamplerForDescriptor(byte *descriptorBytes, size_t descriptorSize);
@@ -547,7 +572,10 @@ private:
   bool m_Maintenance9 = false;
   bool m_DescriptorBuffers = false;
   bool m_DescriptorHeaps = false;
-  size_t m_ImageHeapOpaqueDataSize = 0;
+  VkPhysicalDeviceDescriptorHeapPropertiesEXT m_DescriptorHeapProperties = {};
+  // sampler and null heap descriptors already recorded on the device record
+  Threading::CriticalSection m_DeviceHeapDescriptorsLock;
+  std::set<bytebuf> m_DeviceHeapDescriptors;
   bool m_MultiviewPerViewViewports = false;
   uint32_t m_PreciseFMAMask = 0;
 
@@ -3323,12 +3351,12 @@ public:
                                                     VkImageDrmFormatModifierPropertiesEXT *pProperties);
 
   // VK_EXT_descriptor_heap
-  VkResult vkWriteSamplerDescriptorsEXT(VkDevice device, uint32_t samplerCount,
-                                        const VkSamplerCreateInfo *pSamplers,
-                                        const VkHostAddressRangeEXT *pDescriptors);
-  VkResult vkWriteResourceDescriptorsEXT(VkDevice device, uint32_t resourceCount,
-                                         const VkResourceDescriptorInfoEXT *pResources,
-                                         const VkHostAddressRangeEXT *pDescriptors);
+  IMPLEMENT_FUNCTION_SERIALISED(VkResult, vkWriteSamplerDescriptorsEXT, VkDevice device,
+                                uint32_t samplerCount, const VkSamplerCreateInfo *pSamplers,
+                                const VkHostAddressRangeEXT *pDescriptors);
+  IMPLEMENT_FUNCTION_SERIALISED(VkResult, vkWriteResourceDescriptorsEXT, VkDevice device,
+                                uint32_t resourceCount, const VkResourceDescriptorInfoEXT *pResources,
+                                const VkHostAddressRangeEXT *pDescriptors);
   IMPLEMENT_FUNCTION_SERIALISED(void, vkCmdBindSamplerHeapEXT, VkCommandBuffer commandBuffer,
                                 const VkBindHeapInfoEXT *pBindInfo);
   IMPLEMENT_FUNCTION_SERIALISED(void, vkCmdBindResourceHeapEXT, VkCommandBuffer commandBuffer,

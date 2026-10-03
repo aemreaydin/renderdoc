@@ -521,6 +521,8 @@ private:
 
   void FillDescriptor(Descriptor &dstel, const DescriptorSetSlot &srcel);
   void FillSamplerDescriptor(SamplerDescriptor &dstel, const DescriptorSetSlot &srcel);
+  void FillImageView(Descriptor &dstel, const VulkanCreationInfo::ImageView &viewInfo, bool storage);
+  void FillSampler(SamplerDescriptor &dstel, const VulkanCreationInfo::Sampler &sampl);
 
   void FetchVSOut(uint32_t eventId, VulkanRenderState &state);
   void FetchTessGSOut(uint32_t eventId, VulkanRenderState &state);

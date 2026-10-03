@@ -1109,6 +1109,16 @@ struct ResourceInfo
     return descriptors.insert(key).second;
   }
 
+  // descriptor heap writes already recorded for this resource, keyed by the written bytes
+  std::set<bytebuf> heapDescriptors;
+
+  // return true if these heap descriptor bytes are new, false if we already had them
+  bool AddHeapDescriptor(const bytebuf &bytes)
+  {
+    SCOPED_LOCK(descriptorLock);
+    return heapDescriptors.insert(bytes).second;
+  }
+
   // for external images if we query both external and non-external and the sizes are different, we
   // can't allow dedicated memory as it is required to precisely match in size.
   bool banDedicated = false;
