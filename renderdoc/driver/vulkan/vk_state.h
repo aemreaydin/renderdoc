@@ -183,7 +183,7 @@ struct VulkanRenderState
   ResourceId pushLayout;
 
   uint32_t subpass = 0;
-  VkSubpassContents subpassContents;
+  VkSubpassContents subpassContents = VK_SUBPASS_CONTENTS_INLINE;
 
   // helper function - if the pipeline has been changed, this forces all dynamic state to be bound
   // that the pipeline needs (and no other dynamic state). Helpful if the state is mutated just
